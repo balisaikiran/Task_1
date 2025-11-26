@@ -25,6 +25,8 @@ class TwitterClient:
             params["since_id"] = since_id
         headers = {"Authorization": f"Bearer {self.bearer_token}"}
         r = requests.get(url, headers=headers, params=params, timeout=30)
+        if r.status_code == 429:
+            return None, r.headers
         r.raise_for_status()
         return r.json(), r.headers
 

@@ -2,6 +2,7 @@ import json
 import os
 import logging
 from pathlib import Path
+import time
 from typing import Any
 from dotenv import load_dotenv
 
@@ -40,12 +41,37 @@ def poll_mentions(_request: Any = None):
     terms, threshold = load_keywords()
     query = build_query_terms_v2(terms)
     since_id = state.get_since_id()
-    data, headers = twitter.search_recent(query, since_id)
+    max_results = int(os.environ.get("MAX_RESULTS", "10"))
+    data, headers = twitter.search_recent(query, since_id, max_results=max_results)
+    if data is None:
+        remaining = int(headers.get("x-rate-limit-remaining", "0"))
+        reset = headers.get("x-rate-limit-reset")
+        wait_s = int(os.environ.get("WAIT_ON_429_SECONDS", "0"))
+        if wait_s > 0:
+            time.sleep(wait_s)
+            data, headers = twitter.search_recent(query, since_id, max_results=max_results)
+        if data is None:
+            auto_wait = os.environ.get("AUTO_WAIT_FOR_RESET", "0") == "1"
+            max_auto_wait = int(os.environ.get("MAX_AUTO_WAIT_SECONDS", "0"))
+            reset_epoch = int(reset or "0")
+            now = int(time.time())
+            delta = reset_epoch - now
+            if auto_wait and delta > 0 and delta <= max_auto_wait:
+                time.sleep(delta)
+                data, headers = twitter.search_recent(query, since_id, max_results=max_results)
+                if data is None:
+                    logging.warning(f"Rate limited on search; skipping (remaining={remaining}, reset={reset})")
+                    return {"status": "ok", "skipped": True, "remaining": remaining, "reset": reset}
+            else:
+                logging.warning(f"Rate limited on search; skipping (remaining={remaining}, reset={reset})")
+                return {"status": "ok", "skipped": True, "remaining": remaining, "reset": reset}
 
     remaining = int(headers.get("x-rate-limit-remaining", "1"))
-    if remaining <= 1:
-        logging.warning("Near rate limit; skipping processing")
-        return {"status": "ok", "skipped": True}
+    reset = headers.get("x-rate-limit-reset")
+    min_remain = int(os.environ.get("RATE_LIMIT_MIN_REMAINING", "0"))
+    if remaining <= min_remain:
+        logging.warning(f"Near rate limit; skipping processing (remaining={remaining}, reset={reset})")
+        return {"status": "ok", "skipped": True, "remaining": remaining, "reset": reset}
 
     tweets = data.get("data", [])
     users = {u["id"]: u.get("username") for u in data.get("includes", {}).get("users", [])}
