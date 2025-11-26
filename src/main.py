@@ -3,6 +3,7 @@ import os
 import logging
 from pathlib import Path
 from typing import Any
+from dotenv import load_dotenv
 
 from src.clients.twitter import TwitterClient
 from src.clients.blackbox import BlackboxClient
@@ -12,6 +13,7 @@ from src.services.respond import should_reply, generate_reply
 
 
 logging.basicConfig(level=logging.INFO)
+load_dotenv()
 
 
 def load_keywords() -> tuple[list, int]:
