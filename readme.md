@@ -94,3 +94,49 @@
 ## Next Steps
 - Implement the scheduled polling Cloud Function, Firestore schema, Twitter/Blackbox clients, and tests.
 - Validate in `dev` dry‑run, then staged rollout with monitoring and rate‑limit safeguards.
+
+## Quick Start
+- Prerequisites: Python 3.11, a Twitter developer app with v2 access, and a Blackbox.ai API key.
+- Create and activate venv:
+  - `python3 -m venv .venv`
+  - `. .venv/bin/activate`
+- Install deps: `python -m pip install -r requirements.txt`
+- Copy env template: `cp .env.example .env` and fill your keys.
+- Verify env: `python -m src.config.env`
+
+## Configuration (.env)
+- Required:
+  - `BLACKBOX_API_KEY`
+  - `TWITTER_BEARER_TOKEN`
+  - `TWITTER_CONSUMER_KEY`
+  - `TWITTER_CONSUMER_SECRET`
+  - `TWITTER_ACCESS_TOKEN`
+  - `TWITTER_ACCESS_TOKEN_SECRET`
+- Optional:
+  - `DRY_RUN` (set `1` for sample outputs; `0` or unset for live)
+  - `MAX_RESULTS` (tweets per fetch, default `10`)
+  - `RATE_LIMIT_MIN_REMAINING` (min headroom to proceed, default `0`)
+  - `WAIT_ON_429_SECONDS` (short retry wait after 429, default `0`)
+  - `AUTO_WAIT_FOR_RESET` (set `1` to auto wait until reset and retry)
+  - `MAX_AUTO_WAIT_SECONDS` (max auto-wait cap, default `900`)
+
+## Run
+- Dry-run (no Twitter posting):
+  - `export DRY_RUN=1`
+  - `python -m src.main`
+- Live mode (posts replies):
+  - `unset DRY_RUN` or set `DRY_RUN=0`
+  - `python -m src.main`
+
+## Testing
+- Disable auto-loaded plugins and run tests:
+  - `PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 pytest -q`
+
+## Troubleshooting
+- 429 / rate-limited:
+  - Lower frequency (use a scheduler), reduce `MAX_RESULTS`, or enable `AUTO_WAIT_FOR_RESET=1` with a reasonable `MAX_AUTO_WAIT_SECONDS`.
+  - Check headers logged by the app (`x-rate-limit-remaining`, `x-rate-limit-reset`).
+- Credentials:
+  - Run `python -m src.config.env` to confirm presence; values are masked.
+- Replies too long or missing link:
+  - Replies are capped ~270 characters; ensure the link appears early in the LLM output. Adjust prompt if needed.
