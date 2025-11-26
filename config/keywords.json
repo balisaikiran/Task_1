@@ -1,0 +1,16 @@
+{
+  "terms": [
+    "claude",
+    "claude code",
+    "github copilot",
+    "copilot",
+    "cursor",
+    "tabnine",
+    "code whisperer",
+    "codewhisperer",
+    "code llama",
+    "codelama",
+    "deepseek coder"
+  ],
+  "threshold": 85
+}
